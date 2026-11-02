@@ -1,0 +1,6 @@
+{
+  "name": "Chronos - Personal Time & Productivity Tracker",
+  "description": "Professional personal time tracking and productivity system for study, cybersecurity labs, CTFs, and engineering projects with live timers, timesheets, calendar, analytics, and Pomodoro.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

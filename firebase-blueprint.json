@@ -1,0 +1,188 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and personal productivity preferences",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 256 },
+        "displayName": { "type": "string", "maxLength": 128 },
+        "timeFormat": { "type": "string", "enum": ["12h", "24h"] },
+        "weekStart": { "type": "string", "enum": ["monday", "sunday"] },
+        "pomodoroWorkMinutes": { "type": "number" },
+        "pomodoroShortBreakMinutes": { "type": "number" },
+        "pomodoroLongBreakMinutes": { "type": "number" },
+        "pomodoroSessionsBeforeLong": { "type": "number" },
+        "soundEnabled": { "type": "boolean" },
+        "notificationsEnabled": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "User-defined project or category",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 120 },
+        "description": { "type": "string", "maxLength": 1000 },
+        "color": { "type": "string", "maxLength": 30 },
+        "status": { "type": "string", "enum": ["active", "completed", "archived"] },
+        "startDate": { "type": "string", "maxLength": 50 },
+        "deadline": { "type": "string", "maxLength": 50 },
+        "budgetHours": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "name", "color", "status"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "User-defined task belonging to a project",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "projectId": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 160 },
+        "description": { "type": "string", "maxLength": 1000 },
+        "status": { "type": "string", "enum": ["todo", "in_progress", "completed"] },
+        "estimatedHours": { "type": "number" },
+        "deadline": { "type": "string", "maxLength": 50 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "projectId", "name", "status"]
+    },
+    "TimeEntry": {
+      "title": "TimeEntry",
+      "description": "Completed time tracking log",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "projectId": { "type": "string", "maxLength": 128 },
+        "taskId": { "type": "string", "maxLength": 128 },
+        "description": { "type": "string", "maxLength": 1000 },
+        "tags": { "type": "array" },
+        "startTime": { "type": "number" },
+        "endTime": { "type": "number" },
+        "duration": { "type": "number" },
+        "isManual": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "startTime", "endTime", "duration"]
+    },
+    "ActiveTimer": {
+      "title": "ActiveTimer",
+      "description": "Currently running or paused timer state",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "projectId": { "type": "string", "maxLength": 128 },
+        "taskId": { "type": "string", "maxLength": 128 },
+        "description": { "type": "string", "maxLength": 1000 },
+        "tags": { "type": "array" },
+        "startTime": { "type": "number" },
+        "isPaused": { "type": "boolean" },
+        "accumulatedSeconds": { "type": "number" },
+        "lastPausedAt": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "startTime", "isPaused"]
+    },
+    "PomodoroSession": {
+      "title": "PomodoroSession",
+      "description": "Completed Pomodoro interval session",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "projectId": { "type": "string", "maxLength": 128 },
+        "taskId": { "type": "string", "maxLength": 128 },
+        "type": { "type": "string", "enum": ["work", "short_break", "long_break"] },
+        "durationMinutes": { "type": "number" },
+        "completedAt": { "type": "number" },
+        "loggedAsTimeEntry": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "type", "durationMinutes", "completedAt"]
+    },
+    "Reminder": {
+      "title": "Reminder",
+      "description": "Personal reminders and habit nudges",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 200 },
+        "description": { "type": "string", "maxLength": 500 },
+        "scheduledTime": { "type": "number" },
+        "isRecurring": { "type": "boolean" },
+        "recurrenceRule": { "type": "string", "maxLength": 50 },
+        "isCompleted": { "type": "boolean" },
+        "isEnabled": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "scheduledTime"]
+    },
+    "AutoActivity": {
+      "title": "AutoActivity",
+      "description": "Logged desktop activity staging record for manual review and conversion",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "appName": { "type": "string", "maxLength": 150 },
+        "windowTitle": { "type": "string", "maxLength": 250 },
+        "durationSeconds": { "type": "number" },
+        "category": { "type": "string", "maxLength": 80 },
+        "detectedAt": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "converted", "dismissed"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "appName", "durationSeconds", "detectedAt", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile settings and productivity preferences"
+    },
+    "/projects/{projectId}": {
+      "schema": "Project",
+      "description": "User created projects"
+    },
+    "/tasks/{taskId}": {
+      "schema": "Task",
+      "description": "Tasks associated with projects"
+    },
+    "/timeEntries/{entryId}": {
+      "schema": "TimeEntry",
+      "description": "Historical time tracking records"
+    },
+    "/activeTimers/{userId}": {
+      "schema": "ActiveTimer",
+      "description": "Active timer state keyed by userId for persistent multi-device recovery"
+    },
+    "/pomodoroSessions/{sessionId}": {
+      "schema": "PomodoroSession",
+      "description": "Pomodoro work and break logs"
+    },
+    "/reminders/{reminderId}": {
+      "schema": "Reminder",
+      "description": "Productivity reminders and schedule alerts"
+    },
+    "/autoActivities/{activityId}": {
+      "schema": "AutoActivity",
+      "description": "Staging activities from desktop review"
+    }
+  }
+}
