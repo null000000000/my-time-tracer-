@@ -1,5 +1,5 @@
 export type ProjectStatus = 'active' | 'completed' | 'archived';
-export type TaskStatus = 'todo' | 'in_progress' | 'completed';
+export type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'todo';
 export type PomodoroType = 'work' | 'short_break' | 'long_break';
 export type AutoActivityStatus = 'pending' | 'converted' | 'dismissed';
 
@@ -29,6 +29,26 @@ export interface Project {
   startDate?: string;
   deadline?: string;
   budgetHours?: number;
+  parentId?: string | null;
+  showOnCalendar?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CalendarEventType = 'event' | 'deadline' | 'study' | 'milestone';
+
+export interface CalendarEvent {
+  id: string;
+  userId: string;
+  title: string;
+  description?: string;
+  date: string; // YYYY-MM-DD
+  startTime?: string;
+  endTime?: string;
+  projectId?: string;
+  color?: string;
+  type: CalendarEventType;
+  isCompleted?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -36,12 +56,13 @@ export interface Project {
 export interface Task {
   id: string;
   userId: string;
-  projectId: string;
+  projectId: string; // ID of the Project or Subproject it belongs to
   name: string;
   description?: string;
   status: TaskStatus;
   estimatedHours?: number;
   deadline?: string;
+  scheduledDate?: string; // Explicit day assigned for calendar (YYYY-MM-DD)
   createdAt: string;
   updatedAt: string;
 }

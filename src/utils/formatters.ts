@@ -209,3 +209,98 @@ export function exportToJSON(filename: string, data: unknown): void {
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
 }
+
+import type { Project } from '../types';
+
+/**
+ * Returns full hierarchical path for a project, e.g. "Cybersecurity > TryHackMe"
+ */
+export function getProjectBreadcrumb(projectId: string | undefined | null, projects: Project[]): string {
+  if (!projectId) return '';
+  const map = new Map(projects.map(p => [p.id, p]));
+  const path: string[] = [];
+  let curr = map.get(projectId);
+  const visited = new Set<string>();
+
+  while (curr && !visited.has(curr.id)) {
+    visited.add(curr.id);
+    path.unshift(curr.name);
+    curr = curr.parentId ? map.get(curr.parentId) : undefined;
+  }
+
+  return path.join(' › ');
+}
+
+/**
+ * Returns all child/sub-project IDs recursively
+ */
+export function getSubprojectIds(projectId: string, projects: Project[]): string[] {
+  const result: string[] = [];
+  const queue = [projectId];
+
+  while (queue.length > 0) {
+    const parent = queue.shift()!;
+    projects.forEach(p => {
+      if (p.parentId === parent && !result.includes(p.id)) {
+        result.push(p.id);
+        queue.push(p.id);
+      }
+    });
+  }
+
+  return result;
+}
+
+/**
+ * Format projects for <select> options with indentation
+ */
+export function getProjectIndentedOptions(
+  projects: Project[],
+  excludeId?: string
+): { id: string; name: string; label: string; color: string; level: number }[] {
+  const map = new Map(projects.map(p => [p.id, p]));
+  const childrenMap = new Map<string, Project[]>();
+
+  projects.forEach(p => {
+    const parentKey = p.parentId || 'ROOT';
+    const list = childrenMap.get(parentKey) || [];
+    list.push(p);
+    childrenMap.set(parentKey, list);
+  });
+
+  const result: { id: string; name: string; label: string; color: string; level: number }[] = [];
+
+  function traverse(parentKey: string, level: number) {
+    const children = childrenMap.get(parentKey) || [];
+    children.sort((a, b) => a.name.localeCompare(b.name));
+    for (const child of children) {
+      if (excludeId && child.id === excludeId) continue;
+      const prefix = level > 0 ? `${'  '.repeat(level)}└─ ` : '';
+      result.push({
+        id: child.id,
+        name: child.name,
+        label: `${prefix}${child.name}`,
+        color: child.color,
+        level,
+      });
+      traverse(child.id, level + 1);
+    }
+  }
+
+  traverse('ROOT', 0);
+
+  // If there are orphaned subprojects whose parent doesn't exist, list them too
+  projects.forEach(p => {
+    if (p.parentId && !map.has(p.parentId) && !result.some(r => r.id === p.id)) {
+      result.push({
+        id: p.id,
+        name: p.name,
+        label: p.name,
+        color: p.color,
+        level: 0,
+      });
+    }
+  });
+
+  return result;
+}

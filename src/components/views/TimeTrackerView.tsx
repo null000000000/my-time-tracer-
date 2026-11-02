@@ -28,6 +28,8 @@ import {
   formatTime,
   formatDate,
   toISODateString,
+  getProjectBreadcrumb,
+  getProjectIndentedOptions,
 } from '../../utils/formatters';
 import { Modal } from '../common/Modal';
 import { ConfirmDialog } from '../common/ConfirmDialog';
@@ -102,6 +104,7 @@ export const TimeTrackerView: React.FC = () => {
 
   // Project map for quick lookup
   const projectMap = new Map(projects.map((p) => [p.id, p]));
+  const projectOptions = React.useMemo(() => getProjectIndentedOptions(projects), [projects]);
   const taskMap = new Map(tasks.map((t) => [t.id, t]));
 
   // Tasks filtered by current project selection for active timer
@@ -314,13 +317,11 @@ export const TimeTrackerView: React.FC = () => {
                 className="px-3 py-2.5 rounded-xl bg-[#161b22] border border-[#262c36] text-xs text-slate-300 focus:outline-none focus:border-blue-500 cursor-pointer"
               >
                 <option value="">No Project</option>
-                {projects
-                  .filter((p) => p.status === 'active')
-                  .map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
+                {projectOptions.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.label}
+                  </option>
+                ))}
               </select>
 
               {/* Task Picker */}
@@ -480,11 +481,11 @@ export const TimeTrackerView: React.FC = () => {
               onChange={(e) => setSelectedProjectFilter(e.target.value)}
               className="px-3 py-2 rounded-xl bg-[#0d1117] border border-[#21262d] text-xs text-slate-300 focus:outline-none focus:border-blue-500 cursor-pointer"
             >
-              <option value="all">All Projects</option>
+              <option value="all">All Projects & Sub-projects</option>
               <option value="none">No Project</option>
-              {projects.map((p) => (
+              {projectOptions.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.name}
+                  {p.label}
                 </option>
               ))}
             </select>
@@ -526,8 +527,8 @@ export const TimeTrackerView: React.FC = () => {
                       </div>
 
                       <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-1 flex-wrap">
-                        <span className="text-slate-300 font-medium">
-                          {proj ? proj.name : 'No Project'}
+                        <span className="text-slate-300 font-mono text-[11px]">
+                          {proj ? getProjectBreadcrumb(entry.projectId, projects) || proj.name : 'No Project'}
                         </span>
                         {tsk && (
                           <>
@@ -631,9 +632,9 @@ export const TimeTrackerView: React.FC = () => {
                 className="w-full px-3 py-2 rounded-xl bg-[#161b22] border border-[#262c36] text-xs text-slate-200 focus:outline-none focus:border-blue-500 cursor-pointer"
               >
                 <option value="">No Project</option>
-                {projects.map((p) => (
+                {projectOptions.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.name}
+                    {p.label}
                   </option>
                 ))}
               </select>
@@ -795,9 +796,9 @@ export const TimeTrackerView: React.FC = () => {
                 className="w-full px-3 py-2 rounded-xl bg-[#161b22] border border-[#262c36] text-xs text-slate-200 focus:outline-none focus:border-blue-500 cursor-pointer"
               >
                 <option value="">No Project</option>
-                {projects.map((p) => (
+                {projectOptions.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.name}
+                    {p.label}
                   </option>
                 ))}
               </select>

@@ -21,7 +21,29 @@ import {
   PomodoroSession,
   Reminder,
   AutoActivity,
+  CalendarEvent,
 } from '../types';
+
+/**
+ * Recursively removes all undefined values from an object,
+ * ensuring no document payload ever causes Firestore to reject writes.
+ */
+export function cleanPayload<T>(obj: T): T {
+  if (obj === null || obj === undefined) return obj;
+  if (Array.isArray(obj)) {
+    return obj.map(cleanPayload) as unknown as T;
+  }
+  if (typeof obj === 'object' && !(obj instanceof Date)) {
+    const cleaned: Record<string, any> = {};
+    for (const [key, val] of Object.entries(obj)) {
+      if (val !== undefined) {
+        cleaned[key] = cleanPayload(val);
+      }
+    }
+    return cleaned as T;
+  }
+  return obj;
+}
 
 /* ---------------- PROJECTS ---------------- */
 
@@ -35,7 +57,7 @@ export async function createProject(project: Omit<Project, 'id' | 'createdAt' | 
     updatedAt: now,
   };
   try {
-    await setDoc(doc(db, 'projects', projectId), newProject);
+    await setDoc(doc(db, 'projects', projectId), cleanPayload(newProject));
     return projectId;
   } catch (error) {
     handleFirestoreError(error, OperationType.CREATE, `projects/${projectId}`);
@@ -45,10 +67,10 @@ export async function createProject(project: Omit<Project, 'id' | 'createdAt' | 
 export async function updateProject(id: string, updates: Partial<Project>): Promise<void> {
   const path = `projects/${id}`;
   try {
-    await updateDoc(doc(db, 'projects', id), {
+    await updateDoc(doc(db, 'projects', id), cleanPayload({
       ...updates,
       updatedAt: new Date().toISOString(),
-    });
+    }));
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, path);
   }
@@ -90,7 +112,7 @@ export async function createTask(task: Omit<Task, 'id' | 'createdAt' | 'updatedA
     updatedAt: now,
   };
   try {
-    await setDoc(doc(db, 'tasks', taskId), newTask);
+    await setDoc(doc(db, 'tasks', taskId), cleanPayload(newTask));
     return taskId;
   } catch (error) {
     handleFirestoreError(error, OperationType.CREATE, `tasks/${taskId}`);
@@ -100,10 +122,10 @@ export async function createTask(task: Omit<Task, 'id' | 'createdAt' | 'updatedA
 export async function updateTask(id: string, updates: Partial<Task>): Promise<void> {
   const path = `tasks/${id}`;
   try {
-    await updateDoc(doc(db, 'tasks', id), {
+    await updateDoc(doc(db, 'tasks', id), cleanPayload({
       ...updates,
       updatedAt: new Date().toISOString(),
-    });
+    }));
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, path);
   }
@@ -145,7 +167,7 @@ export async function createTimeEntry(entry: Omit<TimeEntry, 'id' | 'createdAt' 
     updatedAt: now,
   };
   try {
-    await setDoc(doc(db, 'timeEntries', entryId), newEntry);
+    await setDoc(doc(db, 'timeEntries', entryId), cleanPayload(newEntry));
     return entryId;
   } catch (error) {
     handleFirestoreError(error, OperationType.CREATE, `timeEntries/${entryId}`);
@@ -155,10 +177,10 @@ export async function createTimeEntry(entry: Omit<TimeEntry, 'id' | 'createdAt' 
 export async function updateTimeEntry(id: string, updates: Partial<TimeEntry>): Promise<void> {
   const path = `timeEntries/${id}`;
   try {
-    await updateDoc(doc(db, 'timeEntries', id), {
+    await updateDoc(doc(db, 'timeEntries', id), cleanPayload({
       ...updates,
       updatedAt: new Date().toISOString(),
-    });
+    }));
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, path);
   }
@@ -193,7 +215,7 @@ export function subscribeTimeEntries(userId: string, callback: (entries: TimeEnt
 export async function saveActiveTimer(timer: ActiveTimer): Promise<void> {
   const path = `activeTimers/${timer.userId}`;
   try {
-    await setDoc(doc(db, 'activeTimers', timer.userId), timer);
+    await setDoc(doc(db, 'activeTimers', timer.userId), cleanPayload(timer));
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
@@ -235,7 +257,7 @@ export async function createPomodoroSession(session: Omit<PomodoroSession, 'id' 
     createdAt: now,
   };
   try {
-    await setDoc(doc(db, 'pomodoroSessions', id), newSession);
+    await setDoc(doc(db, 'pomodoroSessions', id), cleanPayload(newSession));
     return id;
   } catch (error) {
     handleFirestoreError(error, OperationType.CREATE, `pomodoroSessions/${id}`);
@@ -269,7 +291,7 @@ export async function createReminder(reminder: Omit<Reminder, 'id' | 'createdAt'
     updatedAt: now,
   };
   try {
-    await setDoc(doc(db, 'reminders', id), newReminder);
+    await setDoc(doc(db, 'reminders', id), cleanPayload(newReminder));
     return id;
   } catch (error) {
     handleFirestoreError(error, OperationType.CREATE, `reminders/${id}`);
@@ -279,10 +301,10 @@ export async function createReminder(reminder: Omit<Reminder, 'id' | 'createdAt'
 export async function updateReminder(id: string, updates: Partial<Reminder>): Promise<void> {
   const path = `reminders/${id}`;
   try {
-    await updateDoc(doc(db, 'reminders', id), {
+    await updateDoc(doc(db, 'reminders', id), cleanPayload({
       ...updates,
       updatedAt: new Date().toISOString(),
-    });
+    }));
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, path);
   }
@@ -323,7 +345,7 @@ export async function createAutoActivity(activity: Omit<AutoActivity, 'id' | 'cr
     createdAt: now,
   };
   try {
-    await setDoc(doc(db, 'autoActivities', id), newActivity);
+    await setDoc(doc(db, 'autoActivities', id), cleanPayload(newActivity));
     return id;
   } catch (error) {
     handleFirestoreError(error, OperationType.CREATE, `autoActivities/${id}`);
@@ -333,7 +355,7 @@ export async function createAutoActivity(activity: Omit<AutoActivity, 'id' | 'cr
 export async function updateAutoActivity(id: string, updates: Partial<AutoActivity>): Promise<void> {
   const path = `autoActivities/${id}`;
   try {
-    await updateDoc(doc(db, 'autoActivities', id), updates);
+    await updateDoc(doc(db, 'autoActivities', id), cleanPayload(updates));
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, path);
   }
@@ -363,16 +385,72 @@ export function subscribeAutoActivities(userId: string, callback: (acts: AutoAct
   );
 }
 
+/* ---------------- CALENDAR EVENTS ---------------- */
+
+export async function createCalendarEvent(event: Omit<CalendarEvent, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+  const id = `calevt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  const now = new Date().toISOString();
+  const newEvent: CalendarEvent = {
+    ...event,
+    id,
+    createdAt: now,
+    updatedAt: now,
+  };
+  try {
+    await setDoc(doc(db, 'calendarEvents', id), cleanPayload(newEvent));
+    return id;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, `calendarEvents/${id}`);
+  }
+}
+
+export async function updateCalendarEvent(id: string, updates: Partial<CalendarEvent>): Promise<void> {
+  const path = `calendarEvents/${id}`;
+  try {
+    await updateDoc(doc(db, 'calendarEvents', id), cleanPayload({
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    }));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, path);
+  }
+}
+
+export async function deleteCalendarEvent(id: string): Promise<void> {
+  const path = `calendarEvents/${id}`;
+  try {
+    await deleteDoc(doc(db, 'calendarEvents', id));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
+  }
+}
+
+export function subscribeCalendarEvents(userId: string, callback: (events: CalendarEvent[]) => void): Unsubscribe {
+  const q = query(collection(db, 'calendarEvents'), where('userId', '==', userId));
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const list = snapshot.docs.map((d) => d.data() as CalendarEvent);
+      list.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+      callback(list);
+    },
+    (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'calendarEvents');
+    }
+  );
+}
+
 /* ---------------- ALL DATA EXPORT ---------------- */
 
 export async function fetchAllUserData(userId: string) {
-  const [projectsSnap, tasksSnap, entriesSnap, pomodoroSnap, remindersSnap, autoSnap] = await Promise.all([
+  const [projectsSnap, tasksSnap, entriesSnap, pomodoroSnap, remindersSnap, autoSnap, calendarSnap] = await Promise.all([
     getDocs(query(collection(db, 'projects'), where('userId', '==', userId))),
     getDocs(query(collection(db, 'tasks'), where('userId', '==', userId))),
     getDocs(query(collection(db, 'timeEntries'), where('userId', '==', userId))),
     getDocs(query(collection(db, 'pomodoroSessions'), where('userId', '==', userId))),
     getDocs(query(collection(db, 'reminders'), where('userId', '==', userId))),
     getDocs(query(collection(db, 'autoActivities'), where('userId', '==', userId))),
+    getDocs(query(collection(db, 'calendarEvents'), where('userId', '==', userId))),
   ]);
 
   return {
@@ -384,5 +462,6 @@ export async function fetchAllUserData(userId: string) {
     pomodoroSessions: pomodoroSnap.docs.map(d => d.data() as PomodoroSession),
     reminders: remindersSnap.docs.map(d => d.data() as Reminder),
     autoActivities: autoSnap.docs.map(d => d.data() as AutoActivity),
+    calendarEvents: calendarSnap.docs.map(d => d.data() as CalendarEvent),
   };
 }

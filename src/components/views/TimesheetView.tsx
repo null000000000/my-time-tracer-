@@ -24,6 +24,8 @@ import {
   toISODateString,
   getStartOfWeek,
   getEndOfWeek,
+  getProjectBreadcrumb,
+  getProjectIndentedOptions,
 } from '../../utils/formatters';
 import { Modal } from '../common/Modal';
 import { ConfirmDialog } from '../common/ConfirmDialog';
@@ -59,6 +61,7 @@ export const TimesheetView: React.FC = () => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const projectMap = useMemo(() => new Map(projects.map((p) => [p.id, p])), [projects]);
+  const projectOptions = useMemo(() => getProjectIndentedOptions(projects), [projects]);
 
   // Week boundaries
   const weekStartMs = useMemo(() => getStartOfWeek(currentWeekDate), [currentWeekDate]);
@@ -247,11 +250,11 @@ export const TimesheetView: React.FC = () => {
             onChange={(e) => setSelectedProjectId(e.target.value)}
             className="px-3 py-1.5 rounded-xl bg-[#0d1117] border border-[#21262d] text-xs text-slate-300 focus:outline-none focus:border-blue-500 cursor-pointer"
           >
-            <option value="all">All Projects</option>
+            <option value="all">All Projects & Sub-projects</option>
             <option value="none">No Project</option>
-            {projects.map((p) => (
+            {projectOptions.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.name}
+                {p.label}
               </option>
             ))}
           </select>
@@ -336,8 +339,8 @@ export const TimesheetView: React.FC = () => {
                             <p className="text-xs font-medium text-white truncate">
                               {entry.description || 'Tracked Session'}
                             </p>
-                            <p className="text-[11px] text-slate-400 mt-0.5">
-                              {proj?.name || 'No Project'}
+                            <p className="text-[11px] text-slate-400 mt-0.5 font-mono">
+                              {proj ? getProjectBreadcrumb(entry.projectId, projects) || proj.name : 'No Project'}
                             </p>
                           </div>
                         </div>
@@ -419,9 +422,9 @@ export const TimesheetView: React.FC = () => {
                 className="w-full px-3 py-2 rounded-xl bg-[#161b22] border border-[#262c36] text-xs text-slate-200 focus:outline-none cursor-pointer"
               >
                 <option value="">No Project</option>
-                {projects.map((p) => (
+                {projectOptions.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.name}
+                    {p.label}
                   </option>
                 ))}
               </select>
@@ -525,9 +528,9 @@ export const TimesheetView: React.FC = () => {
               className="w-full px-3 py-2 rounded-xl bg-[#161b22] border border-[#262c36] text-xs text-slate-200 focus:outline-none cursor-pointer"
             >
               <option value="">No Project</option>
-              {projects.map((p) => (
+              {projectOptions.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.name}
+                  {p.label}
                 </option>
               ))}
             </select>

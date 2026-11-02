@@ -35,6 +35,8 @@
         "startDate": { "type": "string", "maxLength": 50 },
         "deadline": { "type": "string", "maxLength": 50 },
         "budgetHours": { "type": "number" },
+        "parentId": { "type": "string", "maxLength": 128 },
+        "showOnCalendar": { "type": "boolean" },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
@@ -53,6 +55,7 @@
         "status": { "type": "string", "enum": ["todo", "in_progress", "completed"] },
         "estimatedHours": { "type": "number" },
         "deadline": { "type": "string", "maxLength": 50 },
+        "scheduledDate": { "type": "string", "maxLength": 50 },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
@@ -149,6 +152,27 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["userId", "appName", "durationSeconds", "detectedAt", "status"]
+    },
+    "CalendarEvent": {
+      "title": "CalendarEvent",
+      "description": "User created calendar event or planned session",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 200 },
+        "description": { "type": "string", "maxLength": 1000 },
+        "date": { "type": "string", "maxLength": 50 },
+        "startTime": { "type": "string", "maxLength": 20 },
+        "endTime": { "type": "string", "maxLength": 20 },
+        "projectId": { "type": "string", "maxLength": 128 },
+        "color": { "type": "string", "maxLength": 30 },
+        "type": { "type": "string", "enum": ["event", "deadline", "study", "milestone"] },
+        "isCompleted": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "date"]
     }
   },
   "firestore": {
@@ -183,6 +207,10 @@
     "/autoActivities/{activityId}": {
       "schema": "AutoActivity",
       "description": "Staging activities from desktop review"
+    },
+    "/calendarEvents/{eventId}": {
+      "schema": "CalendarEvent",
+      "description": "Custom calendar events and scheduled sessions"
     }
   }
 }
