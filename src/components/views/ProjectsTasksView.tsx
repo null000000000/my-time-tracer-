@@ -20,6 +20,10 @@ import {
   X,
   ExternalLink,
   CalendarCheck,
+  FileJson,
+  Upload,
+  Download,
+  Sparkles,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTimeTracker } from '../../context/TimeTrackerContext';
@@ -42,6 +46,8 @@ import { Modal } from '../common/Modal';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { EmptyState } from '../common/EmptyState';
 import { useToast } from '../common/Toast';
+import { AddToCalendarModal } from '../common/AddToCalendarModal';
+import { ImportExportModal } from '../common/ImportExportModal';
 
 const PRESET_COLORS = [
   '#388bfd', // blue
@@ -93,6 +99,14 @@ export const ProjectsTasksView: React.FC = () => {
   // Delete dialogs
   const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null);
   const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
+
+  // Subproject Calendar Scheduling Modal
+  const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false);
+  const [calendarTargetSubproject, setCalendarTargetSubproject] = useState<Project | null>(null);
+
+  // Import / Export Center Modal
+  const [isImportExportOpen, setIsImportExportOpen] = useState(false);
+  const [importExportInitialTab, setImportExportInitialTab] = useState<'import' | 'export' | 'seed'>('import');
 
   // Lookups & Mappings
   const projectMap = useMemo(() => new Map(projects.map((p) => [p.id, p])), [projects]);
@@ -598,24 +612,60 @@ export const ProjectsTasksView: React.FC = () => {
                     Manage high-level project workspaces. Click on any project to view and organize its subprojects.
                   </p>
                 </div>
-                <button
-                  onClick={handleOpenCreateProject}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-md shadow-blue-500/20 transition-all cursor-pointer self-start sm:self-auto"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>New Project</span>
-                </button>
+                <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+                  <button
+                    onClick={() => {
+                      setImportExportInitialTab('import');
+                      setIsImportExportOpen(true);
+                    }}
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#161b22] hover:bg-[#21262d] text-slate-300 hover:text-white text-xs font-semibold border border-[#30363d] transition-all cursor-pointer"
+                  >
+                    <FileJson className="w-4 h-4 text-purple-400" />
+                    <span>Import / Export</span>
+                  </button>
+                  <button
+                    onClick={handleOpenCreateProject}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-md shadow-blue-500/20 transition-all cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>New Project</span>
+                  </button>
+                </div>
               </div>
 
               {/* Projects Grid */}
               {rootProjects.length === 0 ? (
-                <EmptyState
-                  title="No projects yet"
-                  description="Create your first project (e.g. Test 1, Cybersecurity Labs, CTF Challenges) to start organizing your subprojects and tasks."
-                  actionLabel="Create Project"
-                  onAction={handleOpenCreateProject}
-                  icon={FolderKanban}
-                />
+                <div className="space-y-4">
+                  <EmptyState
+                    title="No projects yet"
+                    description="Create your first project manually, or load the official Chronos 17-Project curriculum (with 342 projects & 2,166 hands-on tasks)."
+                    actionLabel="Create Project"
+                    onAction={handleOpenCreateProject}
+                    icon={FolderKanban}
+                  />
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+                    <button
+                      onClick={() => {
+                        setImportExportInitialTab('seed');
+                        setIsImportExportOpen(true);
+                      }}
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 text-purple-300 text-xs font-semibold transition-all cursor-pointer"
+                    >
+                      <Sparkles className="w-4 h-4" />
+                      <span>Load Chronos 17 Projects Curriculum</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setImportExportInitialTab('import');
+                        setIsImportExportOpen(true);
+                      }}
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#161b22] hover:bg-[#21262d] border border-[#30363d] text-slate-300 text-xs font-semibold transition-all cursor-pointer"
+                    >
+                      <Upload className="w-4 h-4 text-blue-400" />
+                      <span>Import JSON Backup File</span>
+                    </button>
+                  </div>
+                </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {rootProjects.map((project) => {
@@ -857,14 +907,30 @@ export const ProjectsTasksView: React.FC = () => {
                         </div>
 
                         {/* Card Footer */}
-                        <div className="flex items-center justify-between text-xs text-slate-400 mt-4 pt-3 border-t border-[#1e232d]">
-                          <span className="text-xs text-slate-400">
-                            {stats.totalTasks} {stats.totalTasks === 1 ? 'Task' : 'Tasks'}
-                          </span>
-                          <span className="flex items-center gap-1 text-purple-400 font-semibold group-hover:translate-x-0.5 transition-transform text-xs">
-                            <span>View Tasks</span>
-                            <ChevronRight className="w-3.5 h-3.5" />
-                          </span>
+                        <div className="flex items-center justify-between text-xs text-slate-400 mt-4 pt-3 border-t border-[#1e232d] gap-2">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCalendarTargetSubproject(subproject);
+                              setIsCalendarModalOpen(true);
+                            }}
+                            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#161b22] hover:bg-[#202734] border border-[#262c36] text-blue-400 hover:text-blue-300 text-[11px] font-semibold transition-colors cursor-pointer"
+                            title="Schedule session for this Subproject on Calendar"
+                          >
+                            <Calendar className="w-3.5 h-3.5" />
+                            <span>Add to Calendar</span>
+                          </button>
+
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-slate-400">
+                              {stats.totalTasks} {stats.totalTasks === 1 ? 'Task' : 'Tasks'}
+                            </span>
+                            <span className="flex items-center gap-1 text-purple-400 font-semibold group-hover:translate-x-0.5 transition-transform text-xs">
+                              <span>View Tasks</span>
+                              <ChevronRight className="w-3.5 h-3.5" />
+                            </span>
+                          </div>
                         </div>
                       </div>
                     );
@@ -889,11 +955,21 @@ export const ProjectsTasksView: React.FC = () => {
                     </span>
                   </div>
                   <p className="text-xs text-slate-400 mt-1">
-                    Part of <strong className="text-white">{currentParentProject.name}</strong>. Assign specific dates to tasks to display them automatically on Kronos Calendar.
+                    Part of <strong className="text-white">{currentParentProject.name}</strong>. Add sessions directly to your calendar or manage granular tasks.
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    onClick={() => {
+                      setCalendarTargetSubproject(currentSubproject);
+                      setIsCalendarModalOpen(true);
+                    }}
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#161b22] hover:bg-[#21262d] text-blue-400 hover:text-blue-300 text-xs font-semibold border border-[#30363d] transition-all cursor-pointer"
+                  >
+                    <Calendar className="w-4 h-4" />
+                    <span>Add to Calendar</span>
+                  </button>
                   <button
                     onClick={() => handleOpenCreateTask(currentSubproject.id)}
                     className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-md shadow-blue-500/20 transition-all cursor-pointer"
@@ -1513,6 +1589,24 @@ export const ProjectsTasksView: React.FC = () => {
         isDestructive
         onConfirm={handleConfirmDeleteTask}
         onCancel={() => setDeletingTaskId(null)}
+      />
+
+      {/* Subproject Calendar Scheduling Modal */}
+      <AddToCalendarModal
+        isOpen={isCalendarModalOpen}
+        onClose={() => {
+          setIsCalendarModalOpen(false);
+          setCalendarTargetSubproject(null);
+        }}
+        subproject={calendarTargetSubproject}
+        parentProject={calendarTargetSubproject?.parentId ? projectMap.get(calendarTargetSubproject.parentId) : currentParentProject}
+      />
+
+      {/* JSON Workspace Import & Export Center */}
+      <ImportExportModal
+        isOpen={isImportExportOpen}
+        onClose={() => setIsImportExportOpen(false)}
+        initialTab={importExportInitialTab}
       />
     </div>
   );
