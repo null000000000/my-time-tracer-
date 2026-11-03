@@ -53,12 +53,14 @@ export const TimeTrackerProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   // Listen to Firestore active timer
   useEffect(() => {
+    // Immediately isolate and flush previous session in-memory state
+    setActiveTimer(null);
+    setElapsedSeconds(0);
+    setProjects([]);
+    setTasks([]);
+    setTimeEntries([]);
+
     if (!user) {
-      setActiveTimer(null);
-      setElapsedSeconds(0);
-      setProjects([]);
-      setTasks([]);
-      setTimeEntries([]);
       setLoadingData(false);
       return;
     }

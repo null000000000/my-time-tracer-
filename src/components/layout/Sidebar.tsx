@@ -36,7 +36,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   collapsed,
   onToggleCollapse,
 }) => {
-  const { user, logout } = useAuth();
+  const { user, logout, isGuest } = useAuth();
   const { activeTimer, elapsedSeconds, isRunning, isPaused, pauseTimer, resumeTimer, stopTimer, projects } = useTimeTracker();
 
   const navItems: { tab: NavigationTab; label: string; icon: React.FC<{ className?: string }> }[] = [
@@ -187,7 +187,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* User Footer */}
       <div className="p-3 border-t border-[#21262d] bg-[#090d13]">
         <div className={`flex items-center gap-3 ${collapsed ? 'justify-center' : ''}`}>
-          {user?.photoURL ? (
+          {isGuest ? (
+            <div
+              className="w-8 h-8 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-xs font-bold text-amber-300 shrink-0"
+              title="Guest Session"
+            >
+              G
+            </div>
+          ) : user?.photoURL ? (
             <img
               src={user.photoURL}
               alt={user.displayName || 'User'}
@@ -201,15 +208,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {!collapsed && (
             <div className="flex-1 min-w-0">
               <p className="text-xs font-medium text-white truncate">
-                {user?.displayName || user?.email?.split('@')[0] || 'Personal Space'}
+                {isGuest ? 'Guest Engineer' : user?.displayName || user?.email?.split('@')[0] || 'Personal Space'}
               </p>
-              <p className="text-[10px] text-slate-500 truncate">{user?.email}</p>
+              <p className="text-[10px] text-slate-500 truncate">
+                {isGuest ? (
+                  <span className="text-amber-400 font-mono text-[9px] uppercase tracking-wider">Temporary Tab</span>
+                ) : (
+                  user?.email
+                )}
+              </p>
             </div>
           )}
           {!collapsed && (
             <button
               onClick={() => logout()}
-              title="Sign out"
+              title={isGuest ? 'Exit Guest Mode' : 'Sign out'}
               className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-[#161b22] transition-colors cursor-pointer"
             >
               <LogOut className="w-4 h-4" />

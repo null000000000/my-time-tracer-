@@ -7,7 +7,6 @@ import {
   getDocs,
   query,
   where,
-  orderBy,
   onSnapshot,
   Unsubscribe,
 } from 'firebase/firestore';
@@ -22,7 +21,51 @@ import {
   Reminder,
   AutoActivity,
   CalendarEvent,
+  WorkspaceImportRecord,
 } from '../types';
+import {
+  isGuestSessionActive,
+  getGuestSession,
+  guestCreateProject,
+  guestUpdateProject,
+  guestDeleteProject,
+  subscribeGuestProjects,
+  guestCreateTask,
+  guestUpdateTask,
+  guestDeleteTask,
+  subscribeGuestTasks,
+  guestCreateTimeEntry,
+  guestUpdateTimeEntry,
+  guestDeleteTimeEntry,
+  subscribeGuestTimeEntries,
+  guestSaveActiveTimer,
+  guestDeleteActiveTimer,
+  subscribeGuestActiveTimer,
+  guestCreateCalendarEvent,
+  guestUpdateCalendarEvent,
+  guestDeleteCalendarEvent,
+  subscribeGuestCalendarEvents,
+  guestCreatePomodoroSession,
+  subscribeGuestPomodoroSessions,
+  guestCreateReminder,
+  guestUpdateReminder,
+  guestDeleteReminder,
+  subscribeGuestReminders,
+  guestCreateAutoActivity,
+  guestUpdateAutoActivity,
+  guestDeleteAutoActivity,
+  subscribeGuestAutoActivities,
+  fetchAllGuestData,
+} from './guestStorage';
+
+/**
+ * Check if the given target ID or userId belongs to an active guest session.
+ */
+function isGuestTarget(userIdOrDocId?: string): boolean {
+  if (!userIdOrDocId) return isGuestSessionActive();
+  if (userIdOrDocId.startsWith('guest_') || userIdOrDocId.includes('guest')) return true;
+  return isGuestSessionActive();
+}
 
 /**
  * Recursively removes all undefined values from an object,
@@ -47,7 +90,14 @@ export function cleanPayload<T>(obj: T): T {
 
 /* ---------------- PROJECTS ---------------- */
 
-export async function createProject(project: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>, id?: string): Promise<string> {
+export async function createProject(
+  project: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>,
+  id?: string
+): Promise<string> {
+  if (isGuestTarget(project.userId)) {
+    return guestCreateProject(project, id);
+  }
+
   const projectId = id || `proj_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
   const now = new Date().toISOString();
   const newProject: Project = {
@@ -65,18 +115,33 @@ export async function createProject(project: Omit<Project, 'id' | 'createdAt' | 
 }
 
 export async function updateProject(id: string, updates: Partial<Project>): Promise<void> {
+  const session = getGuestSession();
+  if (session && session.projects.some((p) => p.id === id)) {
+    guestUpdateProject(id, updates);
+    return;
+  }
+
   const path = `projects/${id}`;
   try {
-    await updateDoc(doc(db, 'projects', id), cleanPayload({
-      ...updates,
-      updatedAt: new Date().toISOString(),
-    }));
+    await updateDoc(
+      doc(db, 'projects', id),
+      cleanPayload({
+        ...updates,
+        updatedAt: new Date().toISOString(),
+      })
+    );
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, path);
   }
 }
 
 export async function deleteProject(id: string): Promise<void> {
+  const session = getGuestSession();
+  if (session && session.projects.some((p) => p.id === id)) {
+    guestDeleteProject(id);
+    return;
+  }
+
   const path = `projects/${id}`;
   try {
     await deleteDoc(doc(db, 'projects', id));
@@ -86,6 +151,10 @@ export async function deleteProject(id: string): Promise<void> {
 }
 
 export function subscribeProjects(userId: string, callback: (projects: Project[]) => void): Unsubscribe {
+  if (isGuestTarget(userId)) {
+    return subscribeGuestProjects(callback);
+  }
+
   const q = query(collection(db, 'projects'), where('userId', '==', userId));
   return onSnapshot(
     q,
@@ -102,7 +171,14 @@ export function subscribeProjects(userId: string, callback: (projects: Project[]
 
 /* ---------------- TASKS ---------------- */
 
-export async function createTask(task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>, id?: string): Promise<string> {
+export async function createTask(
+  task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>,
+  id?: string
+): Promise<string> {
+  if (isGuestTarget(task.userId)) {
+    return guestCreateTask(task, id);
+  }
+
   const taskId = id || `task_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
   const now = new Date().toISOString();
   const newTask: Task = {
@@ -120,18 +196,33 @@ export async function createTask(task: Omit<Task, 'id' | 'createdAt' | 'updatedA
 }
 
 export async function updateTask(id: string, updates: Partial<Task>): Promise<void> {
+  const session = getGuestSession();
+  if (session && session.tasks.some((t) => t.id === id)) {
+    guestUpdateTask(id, updates);
+    return;
+  }
+
   const path = `tasks/${id}`;
   try {
-    await updateDoc(doc(db, 'tasks', id), cleanPayload({
-      ...updates,
-      updatedAt: new Date().toISOString(),
-    }));
+    await updateDoc(
+      doc(db, 'tasks', id),
+      cleanPayload({
+        ...updates,
+        updatedAt: new Date().toISOString(),
+      })
+    );
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, path);
   }
 }
 
 export async function deleteTask(id: string): Promise<void> {
+  const session = getGuestSession();
+  if (session && session.tasks.some((t) => t.id === id)) {
+    guestDeleteTask(id);
+    return;
+  }
+
   const path = `tasks/${id}`;
   try {
     await deleteDoc(doc(db, 'tasks', id));
@@ -141,6 +232,10 @@ export async function deleteTask(id: string): Promise<void> {
 }
 
 export function subscribeTasks(userId: string, callback: (tasks: Task[]) => void): Unsubscribe {
+  if (isGuestTarget(userId)) {
+    return subscribeGuestTasks(callback);
+  }
+
   const q = query(collection(db, 'tasks'), where('userId', '==', userId));
   return onSnapshot(
     q,
@@ -157,7 +252,14 @@ export function subscribeTasks(userId: string, callback: (tasks: Task[]) => void
 
 /* ---------------- TIME ENTRIES ---------------- */
 
-export async function createTimeEntry(entry: Omit<TimeEntry, 'id' | 'createdAt' | 'updatedAt'>, id?: string): Promise<string> {
+export async function createTimeEntry(
+  entry: Omit<TimeEntry, 'id' | 'createdAt' | 'updatedAt'>,
+  id?: string
+): Promise<string> {
+  if (isGuestTarget(entry.userId)) {
+    return guestCreateTimeEntry(entry, id);
+  }
+
   const entryId = id || `entry_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
   const now = new Date().toISOString();
   const newEntry: TimeEntry = {
@@ -175,18 +277,33 @@ export async function createTimeEntry(entry: Omit<TimeEntry, 'id' | 'createdAt' 
 }
 
 export async function updateTimeEntry(id: string, updates: Partial<TimeEntry>): Promise<void> {
+  const session = getGuestSession();
+  if (session && session.timeEntries.some((e) => e.id === id)) {
+    guestUpdateTimeEntry(id, updates);
+    return;
+  }
+
   const path = `timeEntries/${id}`;
   try {
-    await updateDoc(doc(db, 'timeEntries', id), cleanPayload({
-      ...updates,
-      updatedAt: new Date().toISOString(),
-    }));
+    await updateDoc(
+      doc(db, 'timeEntries', id),
+      cleanPayload({
+        ...updates,
+        updatedAt: new Date().toISOString(),
+      })
+    );
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, path);
   }
 }
 
 export async function deleteTimeEntry(id: string): Promise<void> {
+  const session = getGuestSession();
+  if (session && session.timeEntries.some((e) => e.id === id)) {
+    guestDeleteTimeEntry(id);
+    return;
+  }
+
   const path = `timeEntries/${id}`;
   try {
     await deleteDoc(doc(db, 'timeEntries', id));
@@ -196,6 +313,10 @@ export async function deleteTimeEntry(id: string): Promise<void> {
 }
 
 export function subscribeTimeEntries(userId: string, callback: (entries: TimeEntry[]) => void): Unsubscribe {
+  if (isGuestTarget(userId)) {
+    return subscribeGuestTimeEntries(callback);
+  }
+
   const q = query(collection(db, 'timeEntries'), where('userId', '==', userId));
   return onSnapshot(
     q,
@@ -213,6 +334,11 @@ export function subscribeTimeEntries(userId: string, callback: (entries: TimeEnt
 /* ---------------- ACTIVE TIMER ---------------- */
 
 export async function saveActiveTimer(timer: ActiveTimer): Promise<void> {
+  if (isGuestTarget(timer.userId)) {
+    guestSaveActiveTimer(timer);
+    return;
+  }
+
   const path = `activeTimers/${timer.userId}`;
   try {
     await setDoc(doc(db, 'activeTimers', timer.userId), cleanPayload(timer));
@@ -222,6 +348,11 @@ export async function saveActiveTimer(timer: ActiveTimer): Promise<void> {
 }
 
 export async function deleteActiveTimer(userId: string): Promise<void> {
+  if (isGuestTarget(userId)) {
+    guestDeleteActiveTimer();
+    return;
+  }
+
   const path = `activeTimers/${userId}`;
   try {
     await deleteDoc(doc(db, 'activeTimers', userId));
@@ -231,6 +362,10 @@ export async function deleteActiveTimer(userId: string): Promise<void> {
 }
 
 export function subscribeActiveTimer(userId: string, callback: (timer: ActiveTimer | null) => void): Unsubscribe {
+  if (isGuestTarget(userId)) {
+    return subscribeGuestActiveTimer(callback);
+  }
+
   return onSnapshot(
     doc(db, 'activeTimers', userId),
     (snapshot) => {
@@ -249,6 +384,10 @@ export function subscribeActiveTimer(userId: string, callback: (timer: ActiveTim
 /* ---------------- POMODORO SESSIONS ---------------- */
 
 export async function createPomodoroSession(session: Omit<PomodoroSession, 'id' | 'createdAt'>): Promise<string> {
+  if (isGuestTarget(session.userId)) {
+    return guestCreatePomodoroSession(session);
+  }
+
   const id = `pomo_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
   const now = new Date().toISOString();
   const newSession: PomodoroSession = {
@@ -265,6 +404,10 @@ export async function createPomodoroSession(session: Omit<PomodoroSession, 'id' 
 }
 
 export function subscribePomodoroSessions(userId: string, callback: (sessions: PomodoroSession[]) => void): Unsubscribe {
+  if (isGuestTarget(userId)) {
+    return subscribeGuestPomodoroSessions(callback);
+  }
+
   const q = query(collection(db, 'pomodoroSessions'), where('userId', '==', userId));
   return onSnapshot(
     q,
@@ -282,6 +425,10 @@ export function subscribePomodoroSessions(userId: string, callback: (sessions: P
 /* ---------------- REMINDERS ---------------- */
 
 export async function createReminder(reminder: Omit<Reminder, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+  if (isGuestTarget(reminder.userId)) {
+    return guestCreateReminder(reminder);
+  }
+
   const id = `rem_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
   const now = new Date().toISOString();
   const newReminder: Reminder = {
@@ -299,18 +446,33 @@ export async function createReminder(reminder: Omit<Reminder, 'id' | 'createdAt'
 }
 
 export async function updateReminder(id: string, updates: Partial<Reminder>): Promise<void> {
+  const session = getGuestSession();
+  if (session && session.reminders.some((r) => r.id === id)) {
+    guestUpdateReminder(id, updates);
+    return;
+  }
+
   const path = `reminders/${id}`;
   try {
-    await updateDoc(doc(db, 'reminders', id), cleanPayload({
-      ...updates,
-      updatedAt: new Date().toISOString(),
-    }));
+    await updateDoc(
+      doc(db, 'reminders', id),
+      cleanPayload({
+        ...updates,
+        updatedAt: new Date().toISOString(),
+      })
+    );
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, path);
   }
 }
 
 export async function deleteReminder(id: string): Promise<void> {
+  const session = getGuestSession();
+  if (session && session.reminders.some((r) => r.id === id)) {
+    guestDeleteReminder(id);
+    return;
+  }
+
   const path = `reminders/${id}`;
   try {
     await deleteDoc(doc(db, 'reminders', id));
@@ -320,6 +482,10 @@ export async function deleteReminder(id: string): Promise<void> {
 }
 
 export function subscribeReminders(userId: string, callback: (reminders: Reminder[]) => void): Unsubscribe {
+  if (isGuestTarget(userId)) {
+    return subscribeGuestReminders(callback);
+  }
+
   const q = query(collection(db, 'reminders'), where('userId', '==', userId));
   return onSnapshot(
     q,
@@ -337,6 +503,10 @@ export function subscribeReminders(userId: string, callback: (reminders: Reminde
 /* ---------------- AUTO ACTIVITIES ---------------- */
 
 export async function createAutoActivity(activity: Omit<AutoActivity, 'id' | 'createdAt'>): Promise<string> {
+  if (isGuestTarget(activity.userId)) {
+    return guestCreateAutoActivity(activity);
+  }
+
   const id = `auto_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
   const now = new Date().toISOString();
   const newActivity: AutoActivity = {
@@ -353,6 +523,12 @@ export async function createAutoActivity(activity: Omit<AutoActivity, 'id' | 'cr
 }
 
 export async function updateAutoActivity(id: string, updates: Partial<AutoActivity>): Promise<void> {
+  const session = getGuestSession();
+  if (session && session.autoActivities.some((a) => a.id === id)) {
+    guestUpdateAutoActivity(id, updates);
+    return;
+  }
+
   const path = `autoActivities/${id}`;
   try {
     await updateDoc(doc(db, 'autoActivities', id), cleanPayload(updates));
@@ -362,6 +538,12 @@ export async function updateAutoActivity(id: string, updates: Partial<AutoActivi
 }
 
 export async function deleteAutoActivity(id: string): Promise<void> {
+  const session = getGuestSession();
+  if (session && session.autoActivities.some((a) => a.id === id)) {
+    guestDeleteAutoActivity(id);
+    return;
+  }
+
   const path = `autoActivities/${id}`;
   try {
     await deleteDoc(doc(db, 'autoActivities', id));
@@ -371,6 +553,10 @@ export async function deleteAutoActivity(id: string): Promise<void> {
 }
 
 export function subscribeAutoActivities(userId: string, callback: (acts: AutoActivity[]) => void): Unsubscribe {
+  if (isGuestTarget(userId)) {
+    return subscribeGuestAutoActivities(callback);
+  }
+
   const q = query(collection(db, 'autoActivities'), where('userId', '==', userId));
   return onSnapshot(
     q,
@@ -387,7 +573,13 @@ export function subscribeAutoActivities(userId: string, callback: (acts: AutoAct
 
 /* ---------------- CALENDAR EVENTS ---------------- */
 
-export async function createCalendarEvent(event: Omit<CalendarEvent, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+export async function createCalendarEvent(
+  event: Omit<CalendarEvent, 'id' | 'createdAt' | 'updatedAt'>
+): Promise<string> {
+  if (isGuestTarget(event.userId)) {
+    return guestCreateCalendarEvent(event);
+  }
+
   const id = `calevt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
   const now = new Date().toISOString();
   const newEvent: CalendarEvent = {
@@ -405,18 +597,33 @@ export async function createCalendarEvent(event: Omit<CalendarEvent, 'id' | 'cre
 }
 
 export async function updateCalendarEvent(id: string, updates: Partial<CalendarEvent>): Promise<void> {
+  const session = getGuestSession();
+  if (session && session.calendarEvents.some((e) => e.id === id)) {
+    guestUpdateCalendarEvent(id, updates);
+    return;
+  }
+
   const path = `calendarEvents/${id}`;
   try {
-    await updateDoc(doc(db, 'calendarEvents', id), cleanPayload({
-      ...updates,
-      updatedAt: new Date().toISOString(),
-    }));
+    await updateDoc(
+      doc(db, 'calendarEvents', id),
+      cleanPayload({
+        ...updates,
+        updatedAt: new Date().toISOString(),
+      })
+    );
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, path);
   }
 }
 
 export async function deleteCalendarEvent(id: string): Promise<void> {
+  const session = getGuestSession();
+  if (session && session.calendarEvents.some((e) => e.id === id)) {
+    guestDeleteCalendarEvent(id);
+    return;
+  }
+
   const path = `calendarEvents/${id}`;
   try {
     await deleteDoc(doc(db, 'calendarEvents', id));
@@ -426,6 +633,10 @@ export async function deleteCalendarEvent(id: string): Promise<void> {
 }
 
 export function subscribeCalendarEvents(userId: string, callback: (events: CalendarEvent[]) => void): Unsubscribe {
+  if (isGuestTarget(userId)) {
+    return subscribeGuestCalendarEvents(callback);
+  }
+
   const q = query(collection(db, 'calendarEvents'), where('userId', '==', userId));
   return onSnapshot(
     q,
@@ -440,10 +651,32 @@ export function subscribeCalendarEvents(userId: string, callback: (events: Calen
   );
 }
 
+/* ---------------- WORKSPACE IMPORTS PROVENANCE ---------------- */
+
+export async function createImportRecord(record: WorkspaceImportRecord): Promise<string> {
+  if (isGuestTarget(record.userId)) {
+    const { guestRecordImport } = await import('./guestStorage');
+    guestRecordImport(record);
+    return record.id;
+  }
+
+  const path = `imports/${record.id}`;
+  try {
+    await setDoc(doc(db, 'imports', record.id), cleanPayload(record));
+    return record.id;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, path);
+  }
+}
+
 /* ---------------- ALL DATA EXPORT ---------------- */
 
 export async function fetchAllUserData(userId: string) {
-  const [projectsSnap, tasksSnap, entriesSnap, pomodoroSnap, remindersSnap, autoSnap, calendarSnap] = await Promise.all([
+  if (isGuestTarget(userId)) {
+    return fetchAllGuestData();
+  }
+
+  const [projectsSnap, tasksSnap, entriesSnap, pomodoroSnap, remindersSnap, autoSnap, calendarSnap, importsSnap] = await Promise.all([
     getDocs(query(collection(db, 'projects'), where('userId', '==', userId))),
     getDocs(query(collection(db, 'tasks'), where('userId', '==', userId))),
     getDocs(query(collection(db, 'timeEntries'), where('userId', '==', userId))),
@@ -451,17 +684,20 @@ export async function fetchAllUserData(userId: string) {
     getDocs(query(collection(db, 'reminders'), where('userId', '==', userId))),
     getDocs(query(collection(db, 'autoActivities'), where('userId', '==', userId))),
     getDocs(query(collection(db, 'calendarEvents'), where('userId', '==', userId))),
+    getDocs(query(collection(db, 'imports'), where('userId', '==', userId))),
   ]);
 
   return {
     exportedAt: new Date().toISOString(),
     userId,
-    projects: projectsSnap.docs.map(d => d.data() as Project),
-    tasks: tasksSnap.docs.map(d => d.data() as Task),
-    timeEntries: entriesSnap.docs.map(d => d.data() as TimeEntry),
-    pomodoroSessions: pomodoroSnap.docs.map(d => d.data() as PomodoroSession),
-    reminders: remindersSnap.docs.map(d => d.data() as Reminder),
-    autoActivities: autoSnap.docs.map(d => d.data() as AutoActivity),
-    calendarEvents: calendarSnap.docs.map(d => d.data() as CalendarEvent),
+    isGuest: false,
+    projects: projectsSnap.docs.map((d) => d.data() as Project),
+    tasks: tasksSnap.docs.map((d) => d.data() as Task),
+    timeEntries: entriesSnap.docs.map((d) => d.data() as TimeEntry),
+    pomodoroSessions: pomodoroSnap.docs.map((d) => d.data() as PomodoroSession),
+    reminders: remindersSnap.docs.map((d) => d.data() as Reminder),
+    autoActivities: autoSnap.docs.map((d) => d.data() as AutoActivity),
+    calendarEvents: calendarSnap.docs.map((d) => d.data() as CalendarEvent),
+    imports: importsSnap.docs.map((d) => d.data() as WorkspaceImportRecord),
   };
 }

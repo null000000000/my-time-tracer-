@@ -106,7 +106,7 @@ export const ProjectsTasksView: React.FC = () => {
 
   // Import / Export Center Modal
   const [isImportExportOpen, setIsImportExportOpen] = useState(false);
-  const [importExportInitialTab, setImportExportInitialTab] = useState<'import' | 'export' | 'seed'>('import');
+  const [importExportInitialTab, setImportExportInitialTab] = useState<'import' | 'export'>('import');
 
   // Lookups & Mappings
   const projectMap = useMemo(() => new Map(projects.map((p) => [p.id, p])), [projects]);
@@ -638,28 +638,18 @@ export const ProjectsTasksView: React.FC = () => {
                 <div className="space-y-4">
                   <EmptyState
                     title="No projects yet"
-                    description="Create your first project manually, or load the official Chronos 17-Project curriculum (with 342 projects & 2,166 hands-on tasks)."
+                    description="Create your first project manually to organize your tasks, or import your personal JSON backup file."
                     actionLabel="Create Project"
                     onAction={handleOpenCreateProject}
                     icon={FolderKanban}
                   />
-                  <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-                    <button
-                      onClick={() => {
-                        setImportExportInitialTab('seed');
-                        setIsImportExportOpen(true);
-                      }}
-                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 text-purple-300 text-xs font-semibold transition-all cursor-pointer"
-                    >
-                      <Sparkles className="w-4 h-4" />
-                      <span>Load Chronos 17 Projects Curriculum</span>
-                    </button>
+                  <div className="flex items-center justify-center pt-1">
                     <button
                       onClick={() => {
                         setImportExportInitialTab('import');
                         setIsImportExportOpen(true);
                       }}
-                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#161b22] hover:bg-[#21262d] border border-[#30363d] text-slate-300 text-xs font-semibold transition-all cursor-pointer"
+                      className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#161b22] hover:bg-[#21262d] border border-[#30363d] text-slate-300 text-xs font-semibold transition-all cursor-pointer"
                     >
                       <Upload className="w-4 h-4 text-blue-400" />
                       <span>Import JSON Backup File</span>

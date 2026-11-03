@@ -19,6 +19,20 @@ export interface UserSettings {
   updatedAt?: string;
 }
 
+export interface WorkspaceImportRecord {
+  id: string;
+  userId: string;
+  sourceFileName?: string;
+  createdAt: string;
+  counts: {
+    projects: number;
+    tasks: number;
+    timeEntries: number;
+    calendarEvents: number;
+  };
+  schemaVersion: number;
+}
+
 export interface Project {
   id: string;
   userId: string;
@@ -31,6 +45,7 @@ export interface Project {
   budgetHours?: number;
   parentId?: string | null;
   showOnCalendar?: boolean;
+  importId?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -49,6 +64,7 @@ export interface CalendarEvent {
   color?: string;
   type: CalendarEventType;
   isCompleted?: boolean;
+  importId?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -63,6 +79,7 @@ export interface Task {
   estimatedHours?: number;
   deadline?: string;
   scheduledDate?: string; // Explicit day assigned for calendar (YYYY-MM-DD)
+  importId?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -78,6 +95,7 @@ export interface TimeEntry {
   endTime: number;   // Unix timestamp in ms
   duration: number;  // Duration in seconds
   isManual: boolean;
+  importId?: string;
   createdAt: string;
   updatedAt: string;
 }

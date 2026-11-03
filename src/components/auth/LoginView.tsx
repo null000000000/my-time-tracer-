@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { Timer, ShieldCheck, Terminal, BookOpen, Sparkles, AlertCircle } from 'lucide-react';
+import { Timer, ShieldCheck, Terminal, BookOpen, Sparkles, AlertCircle, User, ArrowRight, ShieldAlert } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 export const LoginView: React.FC = () => {
-  const { signInWithGoogle } = useAuth();
+  const { signInWithGoogle, startGuestSession } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -17,6 +17,15 @@ export const LoginView: React.FC = () => {
       setError('Failed to authenticate with Google. Please ensure popups are allowed.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleContinueAsGuest = () => {
+    try {
+      startGuestSession();
+    } catch (err: unknown) {
+      console.error(err);
+      setError('Could not initialize temporary guest workspace.');
     }
   };
 
@@ -48,9 +57,9 @@ export const LoginView: React.FC = () => {
         <div className="bg-[#0d1117] border border-[#21262d] rounded-2xl p-8 shadow-2xl backdrop-blur-xl">
           <div className="space-y-4">
             <div>
-              <h2 className="text-base font-semibold text-white">Sign In to Your Workspace</h2>
+              <h2 className="text-base font-semibold text-white">Enter Your Workspace</h2>
               <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                Your personal productivity database is strictly private and secured through Firebase Authentication and Cloud Firestore rules.
+                Choose how you want to access Chronos. Sign in to sync across devices or start immediately as a guest.
               </p>
             </div>
 
@@ -61,6 +70,7 @@ export const LoginView: React.FC = () => {
               </div>
             )}
 
+            {/* Google Sign-in */}
             <button
               onClick={handleSignIn}
               disabled={loading}
@@ -86,6 +96,42 @@ export const LoginView: React.FC = () => {
               </svg>
               <span>{loading ? 'Authenticating...' : 'Continue with Google'}</span>
             </button>
+
+            {/* Divider */}
+            <div className="relative flex py-2 items-center">
+              <div className="flex-grow border-t border-[#21262d]"></div>
+              <span className="flex-shrink mx-3 text-[11px] font-mono uppercase tracking-wider text-slate-500">
+                Or Instant Access
+              </span>
+              <div className="flex-grow border-t border-[#21262d]"></div>
+            </div>
+
+            {/* Continue as Guest Button */}
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={handleContinueAsGuest}
+                className="w-full flex items-center justify-between py-3 px-4 rounded-xl bg-gradient-to-r from-blue-950/40 via-indigo-950/30 to-slate-900 border border-blue-500/30 hover:border-blue-400/60 text-white text-sm font-medium transition-all shadow-sm group cursor-pointer hover:shadow-blue-500/10"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-blue-600/20 border border-blue-400/30 flex items-center justify-center text-blue-400 group-hover:scale-105 transition-transform">
+                    <User className="w-4 h-4" />
+                  </div>
+                  <div className="text-left">
+                    <span className="block text-sm font-semibold text-blue-100">Continue as Guest</span>
+                    <span className="block text-[11px] text-slate-400">Temporary tab session &bull; No login</span>
+                  </div>
+                </div>
+                <ArrowRight className="w-4 h-4 text-blue-400/70 group-hover:text-blue-300 group-hover:translate-x-0.5 transition-all" />
+              </button>
+
+              <div className="flex items-start gap-2 p-2.5 rounded-lg bg-[#161b22]/70 border border-[#21262d] text-[11px] text-slate-400 leading-relaxed">
+                <ShieldAlert className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                <span>
+                  Guest data is stored in this browser tab only (<code className="text-amber-300/90 font-mono">sessionStorage</code>). You can convert to a permanent account at any time.
+                </span>
+              </div>
+            </div>
           </div>
 
           <div className="mt-8 pt-6 border-t border-[#21262d] space-y-3">

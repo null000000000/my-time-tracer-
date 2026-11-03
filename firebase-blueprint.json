@@ -173,6 +173,20 @@
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["userId", "title", "date"]
+    },
+    "WorkspaceImport": {
+      "title": "WorkspaceImport",
+      "description": "Provenance record tracking a user-owned JSON workspace import",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "sourceFileName": { "type": "string", "maxLength": 256 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "counts": { "type": "object" },
+        "schemaVersion": { "type": "number" }
+      },
+      "required": ["id", "userId", "createdAt"]
     }
   },
   "firestore": {
@@ -211,6 +225,10 @@
     "/calendarEvents/{eventId}": {
       "schema": "CalendarEvent",
       "description": "Custom calendar events and scheduled sessions"
+    },
+    "/imports/{importId}": {
+      "schema": "WorkspaceImport",
+      "description": "Provenance tracking for user-owned workspace imports"
     }
   }
 }

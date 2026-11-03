@@ -4,24 +4,21 @@ import {
   Download,
   FileJson,
   Sparkles,
-  AlertTriangle,
+  AlertCircle,
   CheckCircle2,
-  RefreshCw,
-  Layers,
-  CheckSquare,
-  ShieldAlert,
-  Info,
-  Calendar,
-  X,
-  ArrowRight,
-  Database,
   Trash2,
+  RefreshCw,
+  FolderTree,
+  Calendar,
+  Layers,
+  FileCode,
+  ShieldAlert,
 } from 'lucide-react';
-import { Modal } from './Modal';
-import { ConfirmDialog } from './ConfirmDialog';
 import { useAuth } from '../../context/AuthContext';
 import { useTimeTracker } from '../../context/TimeTrackerContext';
 import { useToast } from './Toast';
+import { Modal } from './Modal';
+import { ConfirmDialog } from './ConfirmDialog';
 import {
   validateImportJson,
   sanitizeDatasetForImport,
@@ -31,13 +28,12 @@ import {
   downloadUserDataExport,
   ImportValidationResult,
   GeminiReviewResponse,
-  TARGET_USER_ID,
 } from '../../services/importExportService';
 
 interface ImportExportModalProps {
   isOpen: boolean;
   onClose: () => void;
-  initialTab?: 'import' | 'export' | 'seed';
+  initialTab?: 'import' | 'export';
 }
 
 export const ImportExportModal: React.FC<ImportExportModalProps> = ({
@@ -51,9 +47,10 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [activeTab, setActiveTab] = useState<'import' | 'export' | 'seed'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'import' | 'export'>(initialTab);
 
   // Import State
+  const [selectedFileName, setSelectedFileName] = useState<string>('');
   const [rawJsonText, setRawJsonText] = useState<string>('');
   const [parsedData, setParsedData] = useState<any>(null);
   const [validation, setValidation] = useState<ImportValidationResult | null>(null);
@@ -74,15 +71,16 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
     projectsWritten: number;
     tasksWritten: number;
     timeEntriesWritten: number;
+    calendarEventsWritten: number;
+    importId?: string;
   } | null>(null);
-
-  const isTargetUser = user?.uid === TARGET_USER_ID;
 
   // Handle file select
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setSelectedFileName(file.name);
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
@@ -94,10 +92,11 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
         setValidation(val);
         setGeminiReview(null);
         setGeminiError(null);
+        setImportSummaryResult(null);
         if (!val.isValid) {
           error(val.error || 'Invalid JSON format');
         } else {
-          info(`Detected ${val.counts.projects} projects, ${val.counts.tasks} tasks.`);
+          info(`Detected ${val.counts.projects} projects, ${val.counts.tasks} tasks in ${file.name}.`);
         }
       } catch (err: any) {
         error(`Failed to parse JSON file: ${err.message}`);
@@ -108,32 +107,7 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
     reader.readAsText(file);
   };
 
-  // Load official 17 projects asset directly
-  const handleLoadOfficial17Projects = async () => {
-    try {
-      setIsExecuting(true);
-      setProgressMsg('Fetching official 17 projects backup asset...');
-      const res = await fetch('/api/backup-asset');
-      if (!res.ok) {
-        throw new Error('Could not load backup asset from server');
-      }
-      const json = await res.json();
-      setParsedData(json);
-      setRawJsonText(JSON.stringify(json, null, 2));
-      const val = validateImportJson(json);
-      setValidation(val);
-      setStripDates(true);
-      setActiveTab('import');
-      success('Official 17-project backup dataset loaded successfully.');
-    } catch (err: any) {
-      console.error(err);
-      error(err.message || 'Failed to fetch backup asset');
-    } finally {
-      setIsExecuting(false);
-    }
-  };
-
-  // Run Gemini Analysis
+  // Run Gemini Analysis (on explicitly loaded file only)
   const handleRunGeminiReview = async () => {
     if (!parsedData || !validation?.isValid) {
       error('Please load a valid JSON dataset first.');
@@ -150,23 +124,26 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
         subproject: Boolean(p.parentId),
       }));
 
+      const isGuest = user?.uid?.startsWith('guest_');
+
       const res = await requestGeminiImportReview({
         projectsCount: validation.counts.projects,
         rootProjects: validation.sampleRoots,
         tasksCount: validation.counts.tasks,
         sampleProjects,
+        isGuest,
+        guestSessionId: isGuest ? user?.uid : undefined,
       });
 
       if (res.success && res.analysis) {
         setGeminiReview(res.analysis);
-        success('Gemini productivity review ready!');
+        success('Gemini architectural analysis ready.');
       } else {
-        setGeminiError(res.error || 'Could not generate review');
-        error(res.error || 'Gemini review unavailable. You can still proceed with manual import.');
+        setGeminiError(res.error || 'Gemini analysis unavailable.');
       }
     } catch (err: any) {
-      setGeminiError(err.message || 'Review service error');
-      error('Failed to contact Gemini review service.');
+      console.error(err);
+      setGeminiError(err.message || 'Error executing Gemini review');
     } finally {
       setIsReviewingWithGemini(false);
     }
@@ -181,7 +158,7 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
     setIsConfirmOpen(true);
   };
 
-  // Execute Import
+  // Execute Import into Current User's Workspace
   const handleConfirmExecuteImport = async () => {
     setIsConfirmOpen(false);
     if (!user || !parsedData) return;
@@ -190,27 +167,33 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
       setIsExecuting(true);
       setProgressPercent(0);
 
-      // Step 1: Reset if requested
+      // Step 1: Optional clean reset of current user's workspace only
       if (resetBeforeImport) {
-        setProgressMsg('Safely resetting existing workspace records...');
+        setProgressMsg('Safely resetting your existing workspace records...');
         await executeTargetUserReset(user.uid, (msg, pct) => {
           setProgressMsg(msg);
           setProgressPercent(Math.round(pct * 0.3));
         });
       }
 
-      // Step 2: Sanitize
-      setProgressMsg('Sanitizing projects and stripping task dates...');
-      const sanitized = sanitizeDatasetForImport(parsedData, user.uid, stripDates);
+      // Step 2: Sanitize, strip old embedded ownership, map IDs and generate unique importId
+      setProgressMsg('Sanitizing projects and mapping relationship IDs...');
+      const sanitized = sanitizeDatasetForImport(
+        parsedData,
+        user.uid,
+        stripDates,
+        selectedFileName || 'workspace_import.json'
+      );
 
-      // Step 3: Bulk batch write
-      setProgressMsg('Executing batched Firestore writes...');
+      // Step 3: Batch commit under current user's verified ownership
+      setProgressMsg('Writing isolated workspace records...');
       const writeResult = await executeBatchImport(
         {
           projects: sanitized.projects,
           tasks: sanitized.tasks,
           timeEntries: resetBeforeImport ? [] : sanitized.timeEntries,
-          calendarEvents: [], // Empty calendar
+          calendarEvents: [], // Empty calendar for clean scheduling
+          importRecord: sanitized.importRecord,
         },
         (msg, pct) => {
           setProgressMsg(msg);
@@ -221,7 +204,7 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
 
       setImportSummaryResult(writeResult);
       success(
-        `Import complete: ${writeResult.projectsWritten} projects, ${writeResult.tasksWritten} tasks imported cleanly!`
+        `Import complete: ${writeResult.projectsWritten} projects, ${writeResult.tasksWritten} tasks saved to your workspace!`
       );
     } catch (err: any) {
       console.error('Import failed:', err);
@@ -231,7 +214,7 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
     }
   };
 
-  // Export User Data
+  // Export Current User's Workspace Data
   const handleExportData = async () => {
     if (!user) return;
     try {
@@ -267,7 +250,7 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
               }`}
             >
               <Upload className="w-4 h-4" />
-              <span>Import JSON</span>
+              <span>Import JSON to My Workspace</span>
             </button>
             <button
               onClick={() => setActiveTab('export')}
@@ -279,17 +262,6 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
             >
               <Download className="w-4 h-4" />
               <span>Export My Data</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('seed')}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'seed'
-                  ? 'bg-purple-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <Database className="w-4 h-4" />
-              <span>Chronos 17 Projects</span>
             </button>
           </div>
 
@@ -312,10 +284,10 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
                   <FileJson className="w-6 h-6" />
                 </div>
                 <p className="text-sm font-semibold text-white">
-                  Click to select a JSON backup file
+                  {selectedFileName ? selectedFileName : 'Click to select a JSON backup file'}
                 </p>
                 <p className="text-xs text-slate-400 mt-1">
-                  Supports Chronos, Clockify exports, or custom project structures (.json)
+                  Supports Chronos, Clockify, or custom workspace JSON structures
                 </p>
               </div>
 
@@ -355,7 +327,7 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
                   {/* Sample Root Projects */}
                   {validation.sampleRoots.length > 0 && (
                     <div>
-                      <p className="text-xs font-medium text-slate-400 mb-2">Sample Projects:</p>
+                      <p className="text-xs font-medium text-slate-400 mb-2">Sample Projects in File:</p>
                       <div className="flex flex-wrap gap-1.5">
                         {validation.sampleRoots.map((name, i) => (
                           <span
@@ -403,7 +375,7 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
                       <div>
                         <span className="text-xs font-semibold text-rose-300 group-hover:text-rose-200 transition-colors flex items-center gap-1.5">
                           <Trash2 className="w-3.5 h-3.5 text-rose-400" />
-                          <span>Wipe existing projects & tasks before importing</span>
+                          <span>Wipe my existing projects & tasks before importing</span>
                         </span>
                         <p className="text-[11px] text-slate-400">
                           Ensures a clean slate without duplicate projects. Applies strictly to your account only.
@@ -451,26 +423,16 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
                           {geminiReview.summary}
                         </p>
                         {geminiReview.recommendedFocus && (
-                          <div>
-                            <span className="text-[11px] font-bold text-purple-300 block mb-1">
-                              Recommended Priority Streams:
-                            </span>
-                            <div className="flex flex-wrap gap-1.5">
-                              {geminiReview.recommendedFocus.map((focus, idx) => (
-                                <span
-                                  key={idx}
-                                  className="px-2 py-0.5 rounded-md bg-purple-900/40 border border-purple-700/40 text-purple-200 text-[11px]"
-                                >
-                                  {focus}
-                                </span>
-                              ))}
-                            </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {geminiReview.recommendedFocus.map((f, i) => (
+                              <span
+                                key={i}
+                                className="px-2 py-0.5 rounded bg-purple-900/40 text-purple-300 border border-purple-800/50 text-[11px]"
+                              >
+                                {f}
+                              </span>
+                            ))}
                           </div>
-                        )}
-                        {geminiReview.suggestedTimePacing && (
-                          <p className="text-[11px] text-slate-400">
-                            <strong className="text-slate-300">Suggested Pacing:</strong> {geminiReview.suggestedTimePacing}
-                          </p>
                         )}
                       </div>
                     )}
@@ -478,19 +440,19 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
                 </div>
               )}
 
-              {/* Progress Bar during Execution */}
+              {/* Progress Bar during execution */}
               {isExecuting && (
-                <div className="p-4 rounded-xl bg-[#161b22] border border-[#21262d] space-y-2">
+                <div className="space-y-2 p-4 rounded-xl bg-[#161b22] border border-[#21262d]">
                   <div className="flex items-center justify-between text-xs text-slate-300">
                     <span className="flex items-center gap-2">
                       <RefreshCw className="w-3.5 h-3.5 animate-spin text-blue-400" />
                       <span>{progressMsg}</span>
                     </span>
-                    <span className="font-mono text-blue-400 font-bold">{progressPercent}%</span>
+                    <span className="font-mono text-blue-400">{progressPercent}%</span>
                   </div>
-                  <div className="w-full h-2 bg-[#0d1117] rounded-full overflow-hidden">
+                  <div className="w-full bg-[#0d1117] rounded-full h-2 overflow-hidden border border-[#21262d]">
                     <div
-                      className="h-full bg-blue-500 rounded-full transition-all duration-300"
+                      className="bg-gradient-to-r from-blue-500 to-indigo-500 h-2 rounded-full transition-all duration-200"
                       style={{ width: `${progressPercent}%` }}
                     />
                   </div>
@@ -508,6 +470,11 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
                     Imported <strong>{importSummaryResult.projectsWritten}</strong> projects & subprojects and{' '}
                     <strong>{importSummaryResult.tasksWritten}</strong> tasks. Calendar starts clean with 0 default dates.
                   </p>
+                  {importSummaryResult.importId && (
+                    <p className="text-[11px] font-mono text-slate-400">
+                      Provenance ID: <code className="text-emerald-300">{importSummaryResult.importId}</code>
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -566,7 +533,7 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
                 </div>
 
                 <div className="p-3 rounded-xl bg-blue-950/20 border border-blue-900/30 text-xs text-blue-300">
-                  Exports are fully compatible with Chronos import restore points and external analytics tools.
+                  Exports are scoped strictly to your account and compatible with Chronos import restore points.
                 </div>
 
                 <button
@@ -576,53 +543,7 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
                   className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-md shadow-blue-500/20 transition-all cursor-pointer"
                 >
                   <Download className="w-4 h-4" />
-                  <span>Download Backup File (.json)</span>
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* ================= TAB 3: SEED 17 PROJECTS ================= */}
-          {activeTab === 'seed' && (
-            <div className="space-y-5">
-              <div className="p-5 rounded-2xl bg-[#0d1117] border border-[#21262d] space-y-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center shrink-0">
-                    <Database className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-white">Chronos Production 17-Project Architecture</h3>
-                    <p className="text-xs text-slate-400">
-                      Pre-packaged full curriculum: 17 root domains, 342 total projects/subprojects, 2,166 hands-on tasks.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="p-4 rounded-xl bg-[#161b22] border border-[#21262d] space-y-2 text-xs text-slate-300">
-                  <p className="font-semibold text-white">Production Ingestion Rules Applied:</p>
-                  <ul className="list-disc list-inside space-y-1 text-slate-400">
-                    <li>All 304 pre-existing task dates stripped (calendar begins completely empty).</li>
-                    <li>All 342 projects marked with <code className="text-purple-300 font-mono">showOnCalendar: false</code>.</li>
-                    <li>Individual tasks can be scheduled manually on the calendar on-demand.</li>
-                    <li>Subprojects feature dedicated "Add to Calendar" button for session planning.</li>
-                  </ul>
-                </div>
-
-                {isTargetUser && (
-                  <div className="p-3.5 rounded-xl bg-blue-950/20 border border-blue-900/40 text-xs text-blue-300 flex items-center gap-2">
-                    <ShieldAlert className="w-4 h-4 text-blue-400 shrink-0" />
-                    <span>Target user verified (<code className="font-mono text-white">{TARGET_USER_ID}</code>). Single-click staging enabled.</span>
-                  </div>
-                )}
-
-                <button
-                  type="button"
-                  onClick={handleLoadOfficial17Projects}
-                  disabled={isExecuting}
-                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold shadow-md shadow-purple-500/20 transition-all cursor-pointer"
-                >
-                  <Upload className="w-4 h-4" />
-                  <span>Load Official 17 Projects Dataset into Importer</span>
+                  <span>Download My Backup File (.json)</span>
                 </button>
               </div>
             </div>

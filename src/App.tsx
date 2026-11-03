@@ -6,6 +6,8 @@ import { NavigationTab } from './types';
 import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
 import { LoginView } from './components/auth/LoginView';
+import { GuestModeBanner } from './components/common/GuestModeBanner';
+import { GuestMigrationModal } from './components/common/GuestMigrationModal';
 
 // Views
 import { DashboardView } from './components/views/DashboardView';
@@ -74,6 +76,7 @@ const MainApp: React.FC = () => {
 
       {/* Main Workspace Area */}
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
+        <GuestModeBanner />
         <Header
           currentTab={currentTab}
           onOpenMobileMenu={() => setMobileMenuOpen(true)}
@@ -93,6 +96,8 @@ const MainApp: React.FC = () => {
           {currentTab === 'reminders_audit' && <RemindersAuditView />}
           {currentTab === 'settings' && <SettingsView />}
         </main>
+
+        <GuestMigrationModal />
       </div>
     </div>
   );

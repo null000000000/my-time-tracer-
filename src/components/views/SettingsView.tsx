@@ -28,7 +28,7 @@ export const SettingsView: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [isImportExportOpen, setIsImportExportOpen] = useState(false);
-  const [importExportTab, setImportExportTab] = useState<'import' | 'export' | 'seed'>('import');
+  const [importExportTab, setImportExportTab] = useState<'import' | 'export'>('import');
 
   // Form local state
   const [timeFormat, setTimeFormat] = useState<'12h' | '24h'>(settings.timeFormat || '24h');
